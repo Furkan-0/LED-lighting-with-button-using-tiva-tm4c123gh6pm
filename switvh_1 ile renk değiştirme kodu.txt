@@ -1,0 +1,72 @@
+//switvh_1 ile renk değiştirme kodu
+
+#include <stdint.h>
+#include <stdbool.h>
+#include "inc/hw_memmap.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/gpio.h"
+
+// Gecikme fonksiyonu (butonun sıçrama etkisini azaltmak için)
+void Delay(void) {
+    SysCtlDelay(2000000); // Yaklaşık 0.1 saniye gecikme
+}
+
+int main(void) {
+    // 1. Saat ayarları: 40 MHz sistem saati
+    SysCtlClockSet(SYSCTL_SYSDIV_5 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN);
+
+    // 2. GPIO Port F'yi etkinleştir
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+
+    // 3. PF1, PF2, PF3'ü çıkış, PF4'ü giriş yap
+    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3);
+    GPIOPinTypeGPIOInput(GPIO_PORTF_BASE, GPIO_PIN_4);
+
+    // 4. PF4'teki SW1 butonu için pull-up direnci etkinleştir
+    GPIOPadConfigSet(GPIO_PORTF_BASE, GPIO_PIN_4, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
+
+    // Başlangıçta tüm LED'leri kapat
+    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3, 0);
+
+    uint8_t ledState = 0; // LED durumunu izlemek için bir değişken
+
+    while (1) {
+        // Butona basıldı mı? (Düşük aktif, yani PF4 0 ise basıldı demektir)
+        if (GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_4) == 0) {
+            Delay(); // Buton sıçramasını önlemek için kısa bir gecikme
+
+            // LED durumunu değiştir
+            ledState++;
+            if (ledState > 3) {
+                ledState = 0; // 3 durumdan sonra sıfırla (kapalı durum)
+            }
+
+            // LED'lerin durumunu belirle
+            switch (ledState) {
+                case 0:
+                    // Tüm LED'leri kapat
+                    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3, 0);
+                    break;
+                case 1:
+                    // Kırmızı LED'i yak
+                    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3, GPIO_PIN_1);
+                    break;
+                case 2:
+                    // Mavi LED'i yak
+                    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3, GPIO_PIN_2);
+                    break;
+                case 3:
+                    // Yeşil LED'i yak
+                    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3, GPIO_PIN_3);
+                    break;
+            }
+
+            // Butonun bırakılmasını bekle
+            while (GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_4) == 0) {
+                // Buton bırakılana kadar bekle
+            }
+
+            Delay(); // Buton bırakılmasının ardından tekrar sıçramayı önlemek için gecikme
+        }
+    }
+}
